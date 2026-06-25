@@ -1,21 +1,22 @@
-import librosa
 import numpy as np
+
+def _fft_autocorr(x):
+    N = len(x)
+    fft_size = 1 << (N.bit_length() + 1)
+    X = np.fft.rfft(x, n=fft_size)
+    acf = np.fft.irfft(X * np.conj(X))[:N]
+    return acf
 
 class PitchTracker:
     def __init__(self, settings=None):
         self.settings = settings or {}
         self.pitch_range = self.settings.get('pitch_range', [80, 400])
-        self.algorithm = self.settings.get('pitch_algorithm', 'pyin')
+        self.algorithm = 'autocorrelation'
         self.frame_length = self.settings.get('frame_length', 2048)
         self.hop_length = self.settings.get('hop_length', 512)
     
     def track(self, audio_data, sample_rate):
-        if self.algorithm == 'pyin':
-            return self._track_pyin(audio_data, sample_rate)
-        elif self.algorithm == 'crepe':
-            return self._track_crepe(audio_data, sample_rate)
-        else:
-            return self._track_autocorrelation(audio_data, sample_rate)
+        return self._track_autocorrelation(audio_data, sample_rate)
     
     def _track_pyin(self, audio_data, sample_rate):
         f0, _, _ = librosa.pyin(
@@ -48,15 +49,14 @@ class PitchTracker:
         hop_length = self.hop_length
         f0 = []
         
+        min_lag = int(sample_rate / self.pitch_range[1])
+        max_lag = int(sample_rate / self.pitch_range[0])
+        
         for i in range(0, len(audio_data) - frame_length, hop_length):
             frame = audio_data[i:i+frame_length]
             frame = frame * np.hanning(len(frame))
             
-            autocorr = np.correlate(frame, frame, mode='full')
-            autocorr = autocorr[len(autocorr)//2:]
-            
-            min_lag = int(sample_rate / self.pitch_range[1])
-            max_lag = int(sample_rate / self.pitch_range[0])
+            autocorr = _fft_autocorr(frame)
             
             if min_lag >= len(autocorr):
                 f0.append(np.nan)

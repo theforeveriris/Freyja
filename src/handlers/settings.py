@@ -1,16 +1,16 @@
 import json
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CallbackContext, CallbackQueryHandler
+from telegram.ext import ContextTypes
 from src.database import get_or_create_user
 from config import DEFAULT_SETTINGS
 
 SETTING_CATEGORIES = {
-    'audio': {'name': '🎵 音频预处理设置', 'description': '采样率、声道数、VAD灵敏度等'},
-    'analysis': {'name': '📊 分析算法设置', 'description': '基频算法、帧长、LPC阶数等'},
-    'gender': {'name': '🧭 性别评估设置', 'description': '各维度权重、F0参考范围等'},
-    'charts': {'name': '🖼️ 图表显示设置', 'description': '主题、DPI、网格等'},
-    'privacy': {'name': '🔔 通知与隐私设置', 'description': '保存音频、自动删除等'},
-    'reset': {'name': '↩️ 恢复默认设置', 'description': '重置所有设置'}
+    'audio': {'name': '音频预处理设置', 'description': '采样率、声道数、VAD灵敏度等'},
+    'analysis': {'name': '分析算法设置', 'description': '基频算法、帧长、LPC阶数等'},
+    'gender': {'name': '性别评估设置', 'description': '各维度权重、F0参考范围等'},
+    'charts': {'name': '图表显示设置', 'description': '主题、DPI、网格等'},
+    'privacy': {'name': '通知与隐私设置', 'description': '保存音频、自动删除等'},
+    'reset': {'name': '恢复默认设置', 'description': '重置所有设置'}
 }
 
 AUDIO_SETTINGS = {
@@ -176,7 +176,7 @@ SETTING_MAPS = {
     'privacy': PRIVACY_SETTINGS
 }
 
-def settings(update: Update, context: CallbackContext):
+async def settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db = context.bot_data['db']
     user = get_or_create_user(db, update.effective_user.id, update.effective_user.username, update.effective_user.first_name)
     
@@ -187,15 +187,15 @@ def settings(update: Update, context: CallbackContext):
     
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    update.message.reply_text(
-        "⚙️ **设置菜单**\n\n请选择要调整的设置分类：",
-        parse_mode='MarkdownV2',
+    await update.message.reply_text(
+        "**设置菜单**\n\n请选择要调整的设置分类：",
+        parse_mode='Markdown',
         reply_markup=reply_markup
     )
 
-def settings_callback(update: Update, context: CallbackContext):
+async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    query.answer()
+    await query.answer()
     
     db = context.bot_data['db']
     user = get_or_create_user(db, query.from_user.id, query.from_user.username, query.from_user.first_name)
@@ -205,7 +205,7 @@ def settings_callback(update: Update, context: CallbackContext):
     if data == 'reset':
         user.update_settings(DEFAULT_SETTINGS)
         db.commit()
-        query.edit_message_text("✅ 所有设置已恢复为默认值！")
+        await query.edit_message_text("所有设置已恢复为默认值！")
         return
     
     category = data
@@ -226,19 +226,19 @@ def settings_callback(update: Update, context: CallbackContext):
             callback_data=f"setting_{category}_{key}"
         )])
     
-    keyboard.append([InlineKeyboardButton("← 返回设置主菜单", callback_data="settings_main")])
+    keyboard.append([InlineKeyboardButton("返回设置主菜单", callback_data="settings_main")])
     
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    query.edit_message_text(
-        f"⚙️ **{SETTING_CATEGORIES[category]['name']}**\n\n{SETTING_CATEGORIES[category]['description']}\n\n请选择要修改的参数：",
-        parse_mode='MarkdownV2',
+    await query.edit_message_text(
+        f"**{SETTING_CATEGORIES[category]['name']}**\n\n{SETTING_CATEGORIES[category]['description']}\n\n请选择要修改的参数：",
+        parse_mode='Markdown',
         reply_markup=reply_markup
     )
 
-def setting_parameter_callback(update: Update, context: CallbackContext):
+async def setting_parameter_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    query.answer()
+    await query.answer()
     
     db = context.bot_data['db']
     user = get_or_create_user(db, query.from_user.id, query.from_user.username, query.from_user.first_name)
@@ -252,9 +252,9 @@ def setting_parameter_callback(update: Update, context: CallbackContext):
             for key in SETTING_CATEGORIES
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        query.edit_message_text(
-            "⚙️ **设置菜单**\n\n请选择要调整的设置分类：",
-            parse_mode='MarkdownV2',
+        await query.edit_message_text(
+            "**设置菜单**\n\n请选择要调整的设置分类：",
+            parse_mode='Markdown',
             reply_markup=reply_markup
         )
         return
@@ -266,7 +266,7 @@ def setting_parameter_callback(update: Update, context: CallbackContext):
     config = category_settings.get(key, {})
     
     if not config:
-        query.edit_message_text("❌ 参数不存在")
+        await query.edit_message_text("参数不存在")
         return
     
     options = config['options']
@@ -280,25 +280,25 @@ def setting_parameter_callback(update: Update, context: CallbackContext):
     keyboard = []
     for option in options:
         is_current = option == current_value
-        prefix = "✅ " if is_current else ""
+        prefix = "[当前] " if is_current else ""
         keyboard.append([InlineKeyboardButton(
             f"{prefix}{config['format'](option)}",
             callback_data=f"option_{category}_{key}_{json.dumps(option)}"
         )])
     
-    keyboard.append([InlineKeyboardButton("← 返回", callback_data=f"settings_{category}")])
+    keyboard.append([InlineKeyboardButton("返回", callback_data=f"settings_{category}")])
     
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    query.edit_message_text(
-        f"⚙️ **{config['name']}**\n\n当前值: {config['format'](current_value)}\n\n请选择新的值：",
-        parse_mode='MarkdownV2',
+    await query.edit_message_text(
+        f"**{config['name']}**\n\n当前值: {config['format'](current_value)}\n\n请选择新的值：",
+        parse_mode='Markdown',
         reply_markup=reply_markup
     )
 
-def setting_option_callback(update: Update, context: CallbackContext):
+async def setting_option_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    query.answer()
+    await query.answer()
     
     db = context.bot_data['db']
     user = get_or_create_user(db, query.from_user.id, query.from_user.username, query.from_user.first_name)
@@ -307,7 +307,7 @@ def setting_option_callback(update: Update, context: CallbackContext):
     parts = data.split('_', 2)
     
     if len(parts) != 3:
-        query.edit_message_text("❌ 参数错误")
+        await query.edit_message_text("参数错误")
         return
     
     category, key, option_str = parts
@@ -315,7 +315,7 @@ def setting_option_callback(update: Update, context: CallbackContext):
     try:
         option = json.loads(option_str)
     except json.JSONDecodeError:
-        query.edit_message_text("❌ 参数解析错误")
+        await query.edit_message_text("参数解析错误")
         return
     
     settings_data = user.get_settings()
@@ -328,9 +328,9 @@ def setting_option_callback(update: Update, context: CallbackContext):
         
         total_weight = sum(settings_data[category]['weights'].values())
         if total_weight != 100:
-            query.edit_message_text(
-                f"⚠️ **权重总和不为100%**\n\n当前总和: {total_weight}%\n请调整其他权重使总和为100%",
-                parse_mode='MarkdownV2'
+            await query.edit_message_text(
+                f"**权重总和不为100%**\n\n当前总和: {total_weight}%\n请调整其他权重使总和为100%",
+                parse_mode='Markdown'
             )
             user.update_settings(settings_data)
             db.commit()
@@ -341,24 +341,24 @@ def setting_option_callback(update: Update, context: CallbackContext):
     user.update_settings(settings_data)
     db.commit()
     
-    query.edit_message_text(
-        f"✅ **{config['name']}** 已设置为: {config['format'](option)}",
-        parse_mode='MarkdownV2'
+    await query.edit_message_text(
+        f"**{config['name']}** 已设置为: {config['format'](option)}",
+        parse_mode='Markdown'
     )
 
-def reset_settings(update: Update, context: CallbackContext):
+async def reset_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db = context.bot_data['db']
     user = get_or_create_user(db, update.effective_user.id, update.effective_user.username, update.effective_user.first_name)
     
-    update.message.reply_text(
-        "⚠️ **警告**：此操作将重置所有设置为默认值！\n\n"
+    await update.message.reply_text(
+        "**警告**：此操作将重置所有设置为默认值！\n\n"
         "请回复 `确认重置` 来确认此操作，或发送任意其他消息取消。",
-        parse_mode='MarkdownV2'
+        parse_mode='Markdown'
     )
     
     context.user_data['reset_settings_pending'] = True
 
-def reset_settings_confirm(update: Update, context: CallbackContext):
+async def reset_settings_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.user_data.get('reset_settings_pending'):
         return
     
@@ -367,8 +367,8 @@ def reset_settings_confirm(update: Update, context: CallbackContext):
         user = get_or_create_user(db, update.effective_user.id, update.effective_user.username, update.effective_user.first_name)
         user.update_settings(DEFAULT_SETTINGS)
         db.commit()
-        update.message.reply_text("✅ 所有设置已恢复为默认值")
+        await update.message.reply_text("所有设置已恢复为默认值")
     else:
-        update.message.reply_text("✅ 操作已取消")
+        await update.message.reply_text("操作已取消")
     
     context.user_data['reset_settings_pending'] = False

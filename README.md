@@ -116,7 +116,7 @@ git clone https://github.com/theforeveriris/Freyja.git
 cd Freyja
 
 # 安装依赖
-pip install -r requirements.txt
+ 
 
 # 配置 Bot Token
 # Linux/Mac:

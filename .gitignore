@@ -26,3 +26,12 @@ data/
 .vscode/
 *.swp
 *.swo
+.env
+
+test_analysis.py
+test_ffmpeg.py
+test_full.py
+test_full2.py
+test_minimal.py
+test_sf.py
+test_step.py

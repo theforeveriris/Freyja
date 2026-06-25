@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 DATA_DIR = os.path.join(BASE_DIR, "data")
 AUDIO_DIR = os.path.join(DATA_DIR, "audio")
@@ -24,7 +24,7 @@ DEFAULT_SETTINGS = {
         "max_duration": 120
     },
     "analysis": {
-        "pitch_algorithm": "pyin",
+        "pitch_algorithm": "autocorrelation",
         "pitch_range": [80, 400],
         "frame_length": 2048,
         "hop_length": 512,

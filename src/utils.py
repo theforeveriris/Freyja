@@ -41,9 +41,10 @@ def format_percentage(value, decimals=1):
         return "N/A"
     return f"{value:.{decimals}f}%"
 
-def get_bars(value, max_value=100, bar_count=20):
-    if value is None or value < 0:
-        return ""
+def get_bars(value, max_value=100, bar_count=10):
+    if value is None or value != value:  # NaN check: NaN != NaN
+        value = 0
+    value = max(0, min(float(value), max_value))
     filled = int(round((value / max_value) * bar_count))
     return "█" * filled + "░" * (bar_count - filled)
 

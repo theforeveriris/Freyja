@@ -3,7 +3,23 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from matplotlib import font_manager
 from config import CHART_THEMES
+
+def _setup_chinese_font():
+    cn_fonts = [
+        'Microsoft YaHei', 'SimHei', 'Noto Sans SC',
+        'PingFang SC', 'Hiragino Sans GB', 'WenQuanYi Micro Hei',
+        'Source Han Sans CN'
+    ]
+    available = {f.name for f in font_manager.fontManager.ttflist}
+    for font in cn_fonts:
+        if font in available:
+            plt.rcParams['font.sans-serif'] = [font] + plt.rcParams.get('font.sans-serif', [])
+            break
+    plt.rcParams['axes.unicode_minus'] = False
+
+_setup_chinese_font()
 
 class Visualizer:
     def __init__(self, settings=None):
@@ -66,7 +82,7 @@ class Visualizer:
         fig, ax = self._create_figure((12, 5))
         
         hop_length = 512
-        times = librosa.times_like(f0_values, sr=sample_rate, hop_length=hop_length)
+        times = np.arange(len(f0_values)) * hop_length / sample_rate
         
         ax.plot(times, f0_values, color=self.line_colors[0], linewidth=2, label='F0')
         
@@ -102,11 +118,20 @@ class Visualizer:
         fig, ax = self._create_figure((12, 6))
         
         hop_length = 128
-        times = np.arange(len(f1_values)) * hop_length / sample_rate
         
-        ax.plot(times, f1_values, color=self.line_colors[0], linewidth=2, label='F1')
-        ax.plot(times, f2_values, color=self.line_colors[1], linewidth=2, label='F2')
-        ax.plot(times, f3_values, color=self.line_colors[2], linewidth=2, label='F3')
+        f1_arr = np.array(f1_values, dtype=float)
+        f2_arr = np.array(f2_values, dtype=float)
+        f3_arr = np.array(f3_values, dtype=float)
+        
+        if len(f1_arr) > 0:
+            times1 = np.arange(len(f1_arr)) * hop_length / sample_rate
+            ax.plot(times1, f1_arr, color=self.line_colors[0], linewidth=2, label='F1')
+        if len(f2_arr) > 0:
+            times2 = np.arange(len(f2_arr)) * hop_length / sample_rate
+            ax.plot(times2, f2_arr, color=self.line_colors[1], linewidth=2, label='F2')
+        if len(f3_arr) > 0:
+            times3 = np.arange(len(f3_arr)) * hop_length / sample_rate
+            ax.plot(times3, f3_arr, color=self.line_colors[2], linewidth=2, label='F3')
         
         ax.set_title('共振峰轨迹图 (Formant Trajectory)')
         ax.set_xlabel('时间 (秒)')
@@ -119,7 +144,11 @@ class Visualizer:
     def plot_formant_scatter(self, f1_values, f2_values, file_path):
         fig, ax = self._create_figure((8, 8))
         
-        ax.scatter(f1_values, f2_values, color=self.line_colors[0], alpha=0.6, s=50)
+        f1_arr = np.array(f1_values, dtype=float)
+        f2_arr = np.array(f2_values, dtype=float)
+        min_len = min(len(f1_arr), len(f2_arr))
+        if min_len > 0:
+            ax.scatter(f1_arr[:min_len], f2_arr[:min_len], color=self.line_colors[0], alpha=0.6, s=50)
         
         ax.set_title('共振峰散点图 (F1 vs F2)')
         ax.set_xlabel('F1 (Hz)')
@@ -134,7 +163,7 @@ class Visualizer:
         fig, ax = self._create_figure((12, 5))
         
         hop_length = 512
-        times = librosa.times_like(energy_values, sr=sample_rate, hop_length=hop_length)
+        times = np.arange(len(energy_values)) * hop_length / sample_rate
         
         ax.plot(times, energy_values, color=self.line_colors[3], linewidth=2)
         ax.fill_between(times, energy_values, alpha=0.2, color=self.line_colors[3])
@@ -150,7 +179,7 @@ class Visualizer:
         fig, ax = self._create_figure((12, 5))
         
         hop_length = 512
-        times = librosa.times_like(centroid_values, sr=sample_rate, hop_length=hop_length)
+        times = np.arange(len(centroid_values)) * hop_length / sample_rate
         
         ax.plot(times, centroid_values, color=self.line_colors[4], linewidth=2)
         
